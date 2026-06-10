@@ -77,20 +77,23 @@ index.html
 
         // 按下發送訊息時觸發
         async function sendTestMessage() {
-            // 檢查是不是在 LINE App 裡面打開的
-            if (!liff.isInClient()) {
-                alert('這個功能要在手機 LINE 聊天室裡打開連結才有效喔！');
-                return;
+    if (!liff.isInClient()) {
+        alert('這個功能要在手機 LINE 聊天室裡打開連結才有效喔！');
+        return;
+    }
+    try {
+        await liff.sendMessages([
+            {
+                type: 'text',
+                text: '大家好！這是我從測試小程式發送的訊息 🚀'
             }
-            try {
-                // 叫 LINE 幫用戶發出一則訊息
-                await liff.sendMessages([
-                    {
-                        type: 'text',
-                        text: '大家好！這是我從測試小程式發送的訊息 🚀'
-                    }
-                ]);
-                alert('訊息發送成功！快看你的聊天室！');
+        ]);
+        alert('訊息發送成功！快看你的聊天室！');
+    } catch (error) {
+        // 🛠️ 把這裡改成 alert，手機畫面上就會跳出失敗的真正原因
+        alert('發送失敗，錯誤原因：' + JSON.stringify(error));
+    }
+}
             } catch (error) {
                 console.error('發送失敗', error);
             }
