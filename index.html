@@ -1,115 +1,44 @@
-<!DOCTYPE html>
-<html lang="zh-TW">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>我的第一個 LINE LIFF App</title>
-    
-    <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
-    
-    <style>
-        body { font-family: Arial, sans-serif; text-align: center; padding: 50px; }
-        #user-info { display: none; margin-top: 20px; }
-        #avatar { width: 100px; height: 100px; border-radius: 50%; }
-        button { padding: 10px 20px; font-size: 16px; cursor: pointer; margin: 5px; }
-        #btn-login { display: none; } /* 預設先隱藏，由 JS 初始化判斷後再決定是否顯示 */
-    </style>
-</head>
-<body>
+async function sendTestMessage() {
+    // 先檢查有沒有登入，沒登入什麼都不能做
+    if (!liff.isLoggedIn()) {
+        alert('請先點擊登入喔！');
+        return;
+    }
 
-    <h1>LINE LIFF 測試小程式</h1>
-    
-    <button id="btn-login" onclick="liffLogin()">使用 LINE 登入</button>
+    // 準備要發送的訊息內容
+    const messagePayload = [
+        {
+            type: 'text',
+            text: '大家好！這是我從測試小程式發送的訊息 🚀'
+        }
+    ];
 
-    <div id="user-info">
-        <h2>歡迎，<span id="user-name"></span>！</h2>
-        <img id="avatar" src="" alt="用戶頭像"><br><br>
-        <button onclick="sendTestMessage()">發送測試訊息</button>
-        <button onclick="liffLogout()">登出</button>
-    </div>
-
-    <script>
-        // 🔴 請確保這裡維持你原本正確的 LIFF ID
-        const MY_LIFF_ID = '2010354679-ea9avhSI'; 
-
-        // 網頁一打開，自動執行這個「初始化」動作
-        async function initLIFF() {
+    // 情況 A：如果在手機 LINE App 聊天室內打開
+    if (liff.isInClient()) {
+        try {
+            await liff.sendMessages(messagePayload);
+            alert('在 LINE 聊天室中發送成功！');
+        } catch (error) {
+            alert('LINE 內發送失敗：' + JSON.stringify(error));
+        }
+    } 
+    // 情況 B：如果是在一般瀏覽器（Safari/Chrome/電腦版）打開
+    else {
+        // 檢查後台有沒有開功能
+        if (liff.isApiAvailable('shareTargetPicker')) {
             try {
-                // 叫 LINE SDK 開始連線
-                await liff.init({ liffId: MY_LIFF_ID });
-                
-                // 檢查使用者是不是已經登入了？
-                if (liff.isLoggedIn()) {
-                    showUserInfo(); // 登入了，就去抓資料
+                // 叫出 LINE 好友/群組選擇器
+                const result = await liff.shareTargetPicker(messagePayload);
+                if (result) {
+                    alert('分享成功！訊息已傳送給指定好友。');
                 } else {
-                    // 沒登入，就把登入按鈕秀出來
-                    document.getElementById('btn-login').style.display = 'inline-block';
+                    alert('你取消了分享。');
                 }
             } catch (error) {
-                console.error('LIFF 初始化失敗', error);
-                alert('LIFF 初始化失敗：' + JSON.stringify(error));
+                alert('瀏覽器分享失敗，請確認 LINE 後台的 shareTargetPicker 開關是否有打開：' + JSON.stringify(error));
             }
+        } else {
+            alert('此 LIFF 尚未在後台啟用 shareTargetPicker 功能。');
         }
-
-        // 抓取 LINE 資料並顯示在網頁上
-        async function showUserInfo() {
-            try {
-                document.getElementById('btn-login').style.display = 'none'; // 隱藏登入按鈕
-                document.getElementById('user-info').style.display = 'block'; // 顯示資料區塊
-
-                // 呼叫 LINE API 抓取個人檔案
-                const profile = await liff.getProfile();
-                document.getElementById('user-name').innerText = profile.displayName; // 塞入名字
-                document.getElementById('avatar').src = profile.pictureUrl || 'https://via.placeholder.com/100'; // 塞入大頭貼網址
-            } catch (error) {
-                console.error('抓取用戶資料失敗', error);
-                alert('抓取用戶資料失敗：' + JSON.stringify(error));
-            }
-        }
-
-        // 按下登入按鈕時觸發
-        function liffLogin() {
-            try {
-                if (!liff.isLoggedIn()) {
-                    liff.login(); // 叫出 LINE 登入畫面
-                }
-            } catch (error) {
-                alert('登入功能失敗：' + JSON.stringify(error));
-            }
-        }
-
-        // 按下登出按鈕時觸發
-        function liffLogout() {
-            if (liff.isLoggedIn()) {
-                liff.logout(); // 登出
-                window.location.reload(); // 重新整理網頁
-            }
-        }
-
-        // 按下發送訊息時觸發
-        async function sendTestMessage() {
-            // 檢查是不是在 LINE App 裡面打開的
-            if (!liff.isInClient()) {
-                alert('這個功能要在手機 LINE 聊天室裡打開連結才有效喔！');
-                return;
-            }
-            try {
-                // 叫 LINE 幫用戶發出一則訊息
-                await liff.sendMessages([
-                    {
-                        type: 'text',
-                        text: '大家好！這是我從測試小程式發送的訊息 🚀'
-                    }
-                ]);
-                alert('訊息發送成功！快看你的聊天室！');
-            } catch (error) {
-                // 🛠️ 如果發送失敗，手機上會直接彈出錯誤原因（例如：因沒有權限而傳回 403 Forbidden）
-                alert('發送失敗，錯誤原因：' + JSON.stringify(error));
-            }
-        }
-
-        // 確保 DOM 載入完成後立刻執行初始化
-        document.addEventListener("DOMContentLoaded", initLIFF);
-    </script>
-</body>
-</html>
+    }
+}
