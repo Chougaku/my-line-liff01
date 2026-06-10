@@ -1,4 +1,3 @@
-index.html
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
@@ -6,12 +5,14 @@ index.html
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>我的第一個 LINE LIFF App</title>
     
-<script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>    
+    <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+    
     <style>
         body { font-family: Arial, sans-serif; text-align: center; padding: 50px; }
         #user-info { display: none; margin-top: 20px; }
         #avatar { width: 100px; height: 100px; border-radius: 50%; }
         button { padding: 10px 20px; font-size: 16px; cursor: pointer; margin: 5px; }
+        #btn-login { display: none; } /* 預設先隱藏，由 JS 初始化判斷後再決定是否顯示 */
     </style>
 </head>
 <body>
@@ -28,7 +29,7 @@ index.html
     </div>
 
     <script>
-        // 🔴 請把下方這裡改成你在 LINE 得到的真實 LIFF ID 🔴
+        // 🔴 請確保這裡維持你原本正確的 LIFF ID
         const MY_LIFF_ID = '2010354679-ea9avhSI'; 
 
         // 網頁一打開，自動執行這個「初始化」動作
@@ -46,24 +47,34 @@ index.html
                 }
             } catch (error) {
                 console.error('LIFF 初始化失敗', error);
+                alert('LIFF 初始化失敗：' + JSON.stringify(error));
             }
         }
 
         // 抓取 LINE 資料並顯示在網頁上
         async function showUserInfo() {
-            document.getElementById('btn-login').style.display = 'none'; // 隱藏登入按鈕
-            document.getElementById('user-info').style.display = 'block'; // 顯示資料區塊
+            try {
+                document.getElementById('btn-login').style.display = 'none'; // 隱藏登入按鈕
+                document.getElementById('user-info').style.display = 'block'; // 顯示資料區塊
 
-            // 呼叫 LINE API 抓取個人檔案
-            const profile = await liff.getProfile();
-            document.getElementById('user-name').innerText = profile.displayName; // 塞入名字
-            document.getElementById('avatar').src = profile.pictureUrl; // 塞入大頭貼網址
+                // 呼叫 LINE API 抓取個人檔案
+                const profile = await liff.getProfile();
+                document.getElementById('user-name').innerText = profile.displayName; // 塞入名字
+                document.getElementById('avatar').src = profile.pictureUrl || 'https://via.placeholder.com/100'; // 塞入大頭貼網址
+            } catch (error) {
+                console.error('抓取用戶資料失敗', error);
+                alert('抓取用戶資料失敗：' + JSON.stringify(error));
+            }
         }
 
         // 按下登入按鈕時觸發
         function liffLogin() {
-            if (!liff.isLoggedIn()) {
-                liff.login(); // 叫出 LINE 登入畫面
+            try {
+                if (!liff.isLoggedIn()) {
+                    liff.login(); // 叫出 LINE 登入畫面
+                }
+            } catch (error) {
+                alert('登入功能失敗：' + JSON.stringify(error));
             }
         }
 
@@ -77,30 +88,28 @@ index.html
 
         // 按下發送訊息時觸發
         async function sendTestMessage() {
-    if (!liff.isInClient()) {
-        alert('這個功能要在手機 LINE 聊天室裡打開連結才有效喔！');
-        return;
-    }
-    try {
-        await liff.sendMessages([
-            {
-                type: 'text',
-                text: '大家好！這是我從測試小程式發送的訊息 🚀'
+            // 檢查是不是在 LINE App 裡面打開的
+            if (!liff.isInClient()) {
+                alert('這個功能要在手機 LINE 聊天室裡打開連結才有效喔！');
+                return;
             }
-        ]);
-        alert('訊息發送成功！快看你的聊天室！');
-    } catch (error) {
-        // 🛠️ 把這裡改成 alert，手機畫面上就會跳出失敗的真正原因
-        alert('發送失敗，錯誤原因：' + JSON.stringify(error));
-    }
-}
+            try {
+                // 叫 LINE 幫用戶發出一則訊息
+                await liff.sendMessages([
+                    {
+                        type: 'text',
+                        text: '大家好！這是我從測試小程式發送的訊息 🚀'
+                    }
+                ]);
+                alert('訊息發送成功！快看你的聊天室！');
             } catch (error) {
-                console.error('發送失敗', error);
+                // 🛠️ 如果發送失敗，手機上會直接彈出錯誤原因（例如：因沒有權限而傳回 403 Forbidden）
+                alert('發送失敗，錯誤原因：' + JSON.stringify(error));
             }
         }
 
-        // 直接在腳本底部呼叫初始化
-        initLIFF();
+        // 確保 DOM 載入完成後立刻執行初始化
+        document.addEventListener("DOMContentLoaded", initLIFF);
     </script>
 </body>
 </html>
